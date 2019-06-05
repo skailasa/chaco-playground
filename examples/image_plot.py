@@ -7,15 +7,24 @@ from chaco.api import (
     GridDataSource, GridMapper, ImageData, Plot, reverse, GridContainer,
     LinearMapper
 )
-from chaco.tools.api import PanTool, ZoomTool
+from chaco.tools.api import PanTool, ZoomTool, RangeSelection2D, RangeSelectionOverlay
 from chaco.overlays.databox import DataBox
 from enable.component_editor import ComponentEditor
-from traits.api import Instance, HasTraits, Str
+from enable.tools.resize_tool import ResizeTool
+#from enable.tools.move_tool import MoveTool
+from chaco.tools.api import MoveTool
+from traits.api import Instance, HasTraits, Str, Enum
 from traitsui.api import Item, ModelView, View
 
 
+class CustomMoveTool(MoveTool):
+
+    def drag_end(self, event):
+        print("now at position: ", event.x, event.y)
+
+
 def calculate_intensity_histogram(pixel_data):
-    hist, bin_edges = np.histogram(pixel_data.flatten())
+    hist, bin_edges = np.histogram(pixel_data.flatten(), bins=1000)
     bin_width = np.subtract(bin_edges[1], bin_edges[0])
     return hist, bin_edges[:-1], bin_width
 
@@ -53,25 +62,21 @@ def plot_component(filepath):
     )
 
     # add some tools to plot
-    '''image_plot.overlays.append(
-        ZoomTool(
-            image_plot,
-            drag_button="right",
-            always_on=True,
-            tool_mode="box",
-            border_color='blue',
-            )
-        )'''
-
-    image_plot.overlays.append(
-        DataBox(so),
+    data_box_overlay = DataBox(
+        component=image_plot,
+        data_position=[0, 0],
+        data_bounds=[250,250]
         )
-
-    image_plot.tools.append(
-        PanTool(
-            image_plot
-            )
+    move_tool = CustomMoveTool(
+        component=data_box_overlay
         )
+    resize_tool = ResizeTool(
+        component=data_box_overlay
+        )
+    data_box_overlay.tools.append(move_tool)
+    #data_box_overlay.tools.append(resize_tool)
+
+    image_plot.overlays.append(data_box_overlay)
 
     # Define intensity histogram plot
     (hist,
