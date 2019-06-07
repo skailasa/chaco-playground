@@ -6,10 +6,11 @@ from chaco.api import (
     GridDataSource, GridMapper, ImageData, Plot, reverse, GridPlotContainer,
 )
 from chaco.overlays.databox import DataBox
-from enable.component_editor import ComponentEditor
 from chaco.tools.api import MoveTool
-from traits.api import Instance, HasTraits, Str, Int, Array, on_trait_change, Event, Tuple
-from traitsui.api import Item, ModelView, View
+from enable.component_editor import ComponentEditor
+from enable.tools.api import ResizeTool
+from traits.api import Array, Event, HasTraits, Instance, Tuple
+from traitsui.api import Item, View
 
 
 TEST = scipy.misc.ascent()  # test image
@@ -32,10 +33,11 @@ def calculate_intensity_histogram(pixel_data):
     return hist, bin_edges[:-1]
 
 
-BOX_SIZE = 100
-
-
 class MyImagePlot(HasTraits):
+
+    # Data box size
+    #box_size = Int(50)
+    box_size = 50
 
     # define plot as a trait
     plot = Instance(GridPlotContainer)
@@ -43,7 +45,7 @@ class MyImagePlot(HasTraits):
     position = Tuple(0, 0)
 
     # subset of image matrix
-    submatrix = Array(shape=(BOX_SIZE, BOX_SIZE))
+    submatrix = Array(shape=(box_size, box_size))
 
     # histogram and bin edge locations
     hist = Array()
@@ -58,13 +60,14 @@ class MyImagePlot(HasTraits):
         resizable=True,
         )
 
-    def __init__(self):
-        self.im = TEST
+    def __init__(self, image):
+        self.im = image
         self.plot_constructors = [
             self.image_histogram_plot_component,
             self.intensity_histogram_plot_component,
         ]
-        self.submatrix = self.im[0:BOX_SIZE, 0:BOX_SIZE]
+
+        self.submatrix = self.im[0:self.box_size, 0:self.box_size]
         self.hist, self.bin_edges = calculate_intensity_histogram(self.submatrix)
 
     def _plot_default(self):
@@ -110,11 +113,13 @@ class MyImagePlot(HasTraits):
         data_box_overlay = MyDataBox(
             component=plot,
             data_position=[0, 0],
-            data_bounds=[BOX_SIZE, BOX_SIZE],
+            data_bounds=[self.box_size, self.box_size],
         )
 
         move_tool = MoveTool(component=data_box_overlay)
+        resize_tool = ResizeTool(component=data_box_overlay)
         data_box_overlay.tools.append(move_tool)
+        data_box_overlay.tools.append(resize_tool)
 
         data_box_overlay.on_trait_change(self.update_position, 'position')
 
@@ -140,9 +145,6 @@ class MyImagePlot(HasTraits):
 
     def intensity_histogram_plot_component(self):
 
-        print(self.bin_edges)
-        print(self.hist)
-
         data = ArrayPlotData(x=self.bin_edges, y=self.hist)
 
         plot = Plot(data)
@@ -163,12 +165,13 @@ class MyImagePlot(HasTraits):
 
     def _position_changed(self, new):
         # update image histogram
-        self.submatrix = self.im[new[0]: new[0]+BOX_SIZE, new[1]: new[1]+BOX_SIZE]
+        self.submatrix = self.im[new[0]: new[0]+self.box_size, new[1]: new[1]+self.box_size]
 
     def _submatrix_changed(self, new):
         self.hist, self.bin_edges = calculate_intensity_histogram(new)
+        print(new.shape)
 
 
 if __name__ == "__main__":
-    image = MyImagePlot()
+    image = MyImagePlot(TEST)
     image.configure_traits()
