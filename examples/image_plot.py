@@ -32,12 +32,22 @@ def calculate_intensity_histogram(pixel_data):
     return hist, bin_edges[:-1]
 
 
+BOX_SIZE = 100
+
+
 class MyImagePlot(HasTraits):
 
     # define plot as a trait
     plot = Instance(GridPlotContainer)
 
     position = Tuple(0, 0)
+
+    # subset of image matrix
+    submatrix = Array(shape=(BOX_SIZE, BOX_SIZE))
+
+    # histogram and bin edge locations
+    hist = Array()
+    bin_edges = Array()
 
     traits_view = View(
         Item(
@@ -49,10 +59,13 @@ class MyImagePlot(HasTraits):
         )
 
     def __init__(self):
+        self.im = TEST
         self.plot_constructors = [
             self.image_histogram_plot_component,
             self.intensity_histogram_plot_component,
         ]
+        self.submatrix = self.im[0:BOX_SIZE, 0:BOX_SIZE]
+        self.hist, self.bin_edges = calculate_intensity_histogram(self.submatrix)
 
     def _plot_default(self):
         return self.grid_plot_component()
@@ -72,8 +85,8 @@ class MyImagePlot(HasTraits):
         return container
 
     def image_histogram_plot_component(self):
-        xs = np.arange(0, len(TEST))
-        ys = np.arange(0, len(TEST))
+        xs = np.arange(0, len(self.im))
+        ys = np.arange(0, len(self.im[0]))
 
         index = GridDataSource(
             xdata=xs, ydata=ys, sort_order=('ascending', 'ascending'))
@@ -81,7 +94,7 @@ class MyImagePlot(HasTraits):
         index_mapper = GridMapper(range=DataRange2D(index))
 
         color_source = ImageData(
-            data=np.flipud(TEST), value_depth=1
+            data=np.flipud(self.im), value_depth=1
         )
         reversed_grays = reverse(Greys)
         color_mapper = reversed_grays(DataRange1D(color_source))
@@ -97,7 +110,7 @@ class MyImagePlot(HasTraits):
         data_box_overlay = MyDataBox(
             component=plot,
             data_position=[0, 0],
-            data_bounds=[50, 50],
+            data_bounds=[BOX_SIZE, BOX_SIZE],
         )
 
         move_tool = MoveTool(component=data_box_overlay)
@@ -110,13 +123,29 @@ class MyImagePlot(HasTraits):
 
         return plot
 
-    def intensity_histogram_plot_component(self):
-        hist, bin_edges = calculate_intensity_histogram(
-            TEST.flatten()
+    def calculate_intensity_histogram(self, pixel_data):
+        #: Number of bins reflect 8-bit greyscale values
+
+        hist, bin_edges = np.histogram(
+            pixel_data.flatten(), bins=256, range=(0, 256)
         )
 
-        plotdata = ArrayPlotData(x=bin_edges, y=hist)
-        plot = Plot(plotdata)
+        return hist, bin_edges
+
+    def _bin_edges_changed(self):
+        self.plot._components[1].data.set_data('x', self.bin_edges)
+
+    def _hist_changed(self):
+        self.plot._components[1].data.set_data('y', self.hist)
+
+    def intensity_histogram_plot_component(self):
+
+        print(self.bin_edges)
+        print(self.hist)
+
+        data = ArrayPlotData(x=self.bin_edges, y=self.hist)
+
+        plot = Plot(data)
         plot.plot(
             ('x', "y"),
             type='bar',
@@ -132,8 +161,12 @@ class MyImagePlot(HasTraits):
     def update_position(self, name, new):
         self.position = self.plot._components[0].map_index(new)
 
-    def _position_changed(self):
-        print(self.position)
+    def _position_changed(self, new):
+        # update image histogram
+        self.submatrix = self.im[new[0]: new[0]+BOX_SIZE, new[1]: new[1]+BOX_SIZE]
+
+    def _submatrix_changed(self, new):
+        self.hist, self.bin_edges = calculate_intensity_histogram(new)
 
 
 if __name__ == "__main__":
