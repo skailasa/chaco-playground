@@ -1,5 +1,3 @@
-import operator
-
 import numpy as np
 import scipy.misc
 
