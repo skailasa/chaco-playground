@@ -13,6 +13,9 @@ from traits.trait_errors import TraitError
 from traitsui.api import Item, View
 
 
+
+
+
 def calculate_intensity_histogram(pixel_data):
     #: Number of bins reflect 8-bit greyscale values
     hist, bin_edges = np.histogram(
@@ -61,7 +64,6 @@ class MyImagePlot(HasTraits):
         self.hist, self.bin_edges = calculate_intensity_histogram(
             self.submatrix
         )
-        self.data_box_overlay = None
 
     def _plot_default(self):
         return self.grid_plot_component()
@@ -138,14 +140,14 @@ class MyImagePlot(HasTraits):
 
         return plot
 
-    def update_my_position(object, name, new):
+    def update_my_position(object, new):
         try:
             object.my_position = object.plot._components[0].map_index(new)
             object.off_grid = False
         except TraitError:
             object.off_grid = True
 
-    def _my_data_bounds_changed(self, name, new):
+    def _my_data_bounds_changed(self):
         if not self.off_grid:
             self.data_box_overlay.data_bounds = [
                 self.my_data_bounds, self.my_data_bounds
