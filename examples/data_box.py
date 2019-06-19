@@ -66,6 +66,7 @@ class MyImagePlot(HasTraits):
         self.hist, self.bin_edges = calculate_intensity_histogram(
             self.submatrix
         )
+        self.data_box_overlay = None
 
     def _plot_default(self):
         return self.grid_plot_component()
@@ -117,7 +118,9 @@ class MyImagePlot(HasTraits):
         move_tool = MoveTool(component=self.data_box_overlay)
         self.data_box_overlay.tools.append(move_tool)
 
-        self.data_box_overlay.on_trait_change(self.update_my_position, 'position')
+        self.data_box_overlay.on_trait_change(
+            self.update_my_position, 'position'
+        )
 
         #: Add to plot
         plot.overlays.append(self.data_box_overlay)
@@ -140,12 +143,12 @@ class MyImagePlot(HasTraits):
 
         return plot
 
-    def update_my_position(self, name, new):
+    def update_my_position(object, name, new):
         try:
-            self.my_position = self.plot._components[0].map_index(new)
-            self.off_grid = False
+            object.my_position = object.plot._components[0].map_index(new)
+            object.off_grid = False
         except TraitError:
-            self.off_grid = True
+            object.off_grid = True
 
     def _my_data_bounds_changed(self, name, new):
         if not self.off_grid:
@@ -155,8 +158,10 @@ class MyImagePlot(HasTraits):
             self.data_box_overlay._data_position = self.my_position
 
     def _my_position_changed(self, new):
-        # update image histogram
-        self.submatrix = self.im[new[0]: new[0]+self.my_data_bounds, new[1]: new[1]+self.my_data_bounds]
+        self.submatrix = self.im[
+                         new[0]: new[0]+self.my_data_bounds,
+                         new[1]: new[1]+self.my_data_bounds
+                         ]
 
     def _submatrix_changed(self, new):
         self.hist, self.bin_edges = calculate_intensity_histogram(new)
