@@ -13,9 +13,6 @@ from traits.trait_errors import TraitError
 from traitsui.api import Item, View
 
 
-
-
-
 def calculate_intensity_histogram(pixel_data):
     #: Number of bins reflect 8-bit greyscale values
     hist, bin_edges = np.histogram(
