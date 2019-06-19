@@ -44,6 +44,8 @@ class MyImagePlot(HasTraits):
 
     position = Tuple(0, 0)
 
+    data_bounds = Tuple(box_size, box_size)
+
     # subset of image matrix
     submatrix = Array(shape=(box_size, box_size))
 
@@ -113,7 +115,7 @@ class MyImagePlot(HasTraits):
         data_box_overlay = MyDataBox(
             component=plot,
             data_position=[0, 0],
-            data_bounds=[self.box_size, self.box_size],
+            data_bounds=self.data_bounds,
         )
 
         move_tool = MoveTool(component=data_box_overlay)
@@ -122,6 +124,7 @@ class MyImagePlot(HasTraits):
         data_box_overlay.tools.append(resize_tool)
 
         data_box_overlay.on_trait_change(self.update_position, 'position')
+        data_box_overlay.on_trait_change(self.update_data_bounds, 'bounds')
 
         #: Add to plot
         plot.overlays.append(data_box_overlay)
@@ -163,13 +166,16 @@ class MyImagePlot(HasTraits):
     def update_position(self, name, new):
         self.position = self.plot._components[0].map_index(new)
 
+    def update_bounds(self, name, new):
+        print('data bounds', new)
+
     def _position_changed(self, new):
         # update image histogram
         self.submatrix = self.im[new[0]: new[0]+self.box_size, new[1]: new[1]+self.box_size]
 
     def _submatrix_changed(self, new):
         self.hist, self.bin_edges = calculate_intensity_histogram(new)
-        print(new.shape)
+        print(self.data_bounds)
 
 
 if __name__ == "__main__":
