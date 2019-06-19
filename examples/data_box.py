@@ -4,8 +4,8 @@ import numpy as np
 import scipy.misc
 
 from chaco.api import (
-    ArrayPlotData, CMapImagePlot, DataRange1D, DataRange2D, Greys,
-    GridDataSource, GridMapper, ImageData, Plot, reverse, GridPlotContainer,
+    CMapImagePlot, DataRange1D, DataRange2D, Greys, Plot, ArrayPlotData,
+    GridDataSource, GridMapper, ImageData, reverse, GridPlotContainer,
 )
 from chaco.overlays.databox import DataBox
 from chaco.tools.api import MoveTool
@@ -18,6 +18,15 @@ from traitsui.api import Item, View
 TEST = scipy.misc.ascent()  # test image
 
 
+def calculate_intensity_histogram(pixel_data):
+    #: Number of bins reflect 8-bit greyscale values
+    hist, bin_edges = np.histogram(
+        pixel_data.flatten(), bins=256, range=(0, 256)
+    )
+
+    return hist, bin_edges[:-1]
+
+
 class MyImagePlot(HasTraits):
 
     # define plot as a trait
@@ -27,21 +36,36 @@ class MyImagePlot(HasTraits):
     off_grid = Bool(False)
     my_data_bounds = Range(low=50, high=250)
 
+    # subset of image matrix
+    submatrix = Array(shape=(my_data_bounds.value, my_data_bounds.value))
+
+    # histogram and bin edge locations
+    hist = Array()
+    bin_edges = Array()
+
     traits_view = View(
         Item('my_data_bounds'),
         Item(
             'plot',
             editor=ComponentEditor(),
+            width=500,
+            height=500,
             ),
         title='Image:',
-        resizable=False,
+        width=800,
+        height=600
         )
 
     def __init__(self, image):
         self.im = image
         self.plot_constructors = [
             self.image_histogram_plot_component,
+            self.intensity_histogram_plot_component,
         ]
+        self.submatrix = self.im[0:self.my_data_bounds, 0:self.my_data_bounds]
+        self.hist, self.bin_edges = calculate_intensity_histogram(
+            self.submatrix
+        )
 
     def _plot_default(self):
         return self.grid_plot_component()
@@ -84,7 +108,6 @@ class MyImagePlot(HasTraits):
             origin='top left',
         )
 
-        #: Add overlay for zoom
         self.data_box_overlay = DataBox(
             component=plot,
             data_position=[0, 0],
@@ -101,6 +124,22 @@ class MyImagePlot(HasTraits):
 
         return plot
 
+    def intensity_histogram_plot_component(self):
+
+        data = ArrayPlotData(x=self.bin_edges, y=self.hist)
+
+        plot = Plot(data)
+        plot.plot(
+            ('x', "y"),
+            type='bar',
+            color='auto',
+            bar_width=1,
+        )
+        # without padding plot just doesn't seem to show up?
+        plot.padding = 0
+
+        return plot
+
     def update_my_position(self, name, new):
         try:
             self.my_position = self.plot._components[0].map_index(new)
@@ -114,6 +153,19 @@ class MyImagePlot(HasTraits):
                 self.my_data_bounds, self.my_data_bounds
             ]
             self.data_box_overlay._data_position = self.my_position
+
+    def _my_position_changed(self, new):
+        # update image histogram
+        self.submatrix = self.im[new[0]: new[0]+self.my_data_bounds, new[1]: new[1]+self.my_data_bounds]
+
+    def _submatrix_changed(self, new):
+        self.hist, self.bin_edges = calculate_intensity_histogram(new)
+
+    def _bin_edges_changed(self):
+        self.plot._components[1].data.set_data('x', self.bin_edges)
+
+    def _hist_changed(self):
+        self.plot._components[1].data.set_data('y', self.hist)
 
 
 if __name__ == "__main__":
