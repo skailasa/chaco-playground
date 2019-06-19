@@ -15,9 +15,6 @@ from traits.trait_errors import TraitError
 from traitsui.api import Item, View
 
 
-TEST = scipy.misc.ascent()  # test image
-
-
 def calculate_intensity_histogram(pixel_data):
     #: Number of bins reflect 8-bit greyscale values
     hist, bin_edges = np.histogram(
@@ -174,5 +171,6 @@ class MyImagePlot(HasTraits):
 
 
 if __name__ == "__main__":
-    image = MyImagePlot(TEST)
-    image.configure_traits()
+    test_image = scipy.misc.ascent()
+    plot = MyImagePlot(test_image)
+    plot.configure_traits()
